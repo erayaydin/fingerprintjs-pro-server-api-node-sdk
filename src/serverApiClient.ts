@@ -22,6 +22,8 @@ export class FingerprintJsServerApiClient {
 
   protected readonly fetch: typeof fetch
 
+  protected readonly retry: boolean
+
   /**
    * FingerprintJS server API client used to fetch data from FingerprintJS
    * @constructor
@@ -36,6 +38,7 @@ export class FingerprintJsServerApiClient {
     this.apiKey = options.apiKey
     this.authenticationMode = options.authenticationMode ?? AuthenticationMode.AuthHeader // Default auth mode is AuthHeader
     this.fetch = options.fetch ?? fetch
+    this.retry = options.retry ?? false
   }
 
   /**
@@ -219,7 +222,12 @@ export class FingerprintJsServerApiClient {
         throw new VisitorsError403(jsonResponse, response)
 
       case 429:
-        throw new VisitorsError429(jsonResponse, response)
+        if (!this.retry) {
+          throw new VisitorsError429(jsonResponse, response)
+        }
+
+        await this.handleRetry(response)
+        return this.getVisitorHistory(visitorId, filter)
 
       default:
         throw ApiError.unknown(response)
@@ -228,5 +236,19 @@ export class FingerprintJsServerApiClient {
 
   private getHeaders() {
     return this.authenticationMode === AuthenticationMode.AuthHeader ? { 'Auth-API-Key': this.apiKey } : undefined
+  }
+
+  private async handleRetry(response: Response): Promise<void> {
+    const retryAfter = response.headers.get('Retry-After')
+    if (!retryAfter) {
+      throw new Error("Retry option enabled but response doesn't contain 'Retry-After' header")
+    }
+
+    const delay = parseInt(retryAfter, 10) * 1000
+    if (isNaN(delay)) {
+      throw new Error("Invalid 'Retry-After' header value")
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, delay))
   }
 }

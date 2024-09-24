@@ -33,6 +33,11 @@ export interface Options {
    * Optional fetch implementation
    * */
   fetch?: typeof fetch
+
+  /**
+   * Optional retry strategy for 429 responses
+   * */
+  retry?: boolean
 }
 
 /**
