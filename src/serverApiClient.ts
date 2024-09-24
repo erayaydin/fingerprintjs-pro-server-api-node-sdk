@@ -22,8 +22,6 @@ export class FingerprintJsServerApiClient {
 
   protected readonly fetch: typeof fetch
 
-  protected static readonly DEFAULT_RETRY_AFTER = 1
-
   /**
    * FingerprintJS server API client used to fetch data from FingerprintJS
    * @constructor
